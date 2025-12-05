@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>Ultra-Pro Lua Obfuscator & Deobfuscator</title>
+
+<style>
+body {
+    background:#000010;
+    color:#d9caff;
+    font-family: monospace;
+    text-align:center;
+    padding:20px;
+}
+textarea {
+    width:90%;
+    height:200px;
+    background:#0a0a1a;
+    color:#fff;
+    border:2px solid #8a3cff;
+    border-radius:10px;
+    padding:10px;
+    resize:none;
+}
+button {
+    background: linear-gradient(90deg, #8a3cff, #ff61f6);
+    border:none;
+    padding:18px 40px;
+    margin:12px 0;
+    border-radius:15px;
+    font-size:20px;
+    font-weight:bold;
+    color:white;
+    cursor:pointer;
+    transition:0.2s;
+    width:85%;
+}
+button:hover {
+    transform:scale(1.05);
+    box-shadow:0 0 15px #ff61f6;
+}
+input[type="file"] {
+    margin:10px;
+    color:#fff;
+}
+</style>
+</head>
+<body>
+
+<h1>🔒 Ultra-Pro Lua Obfuscator & 🔓 Deobfuscator</h1>
+
+<input type="file" id="fileInput" accept=".lua">
+
+<textarea id="input" placeholder="ضع كود Lua هنا..."></textarea>
+
+<button onclick="obfuscate()">🔒 تشويش وتشفيـر قوي</button>
+<button onclick="deobfuscate()">🔓 فك التشفير</button>
+
+<textarea id="output" placeholder="النتيجة تظهر هنا..."></textarea>
+
+<button onclick="downloadFile()">⬇ تحميل الملف</button>
+
+<script>
+// =================== توليد أسماء عشوائية ===================
+function randomName(len=16){
+    const chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let s="";
+    for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+    return s;
+}
+
+// =================== تشفير ===================
+function deepEncrypt(str){
+    let key = Math.floor(Math.random()*255)+1;
+    let bytes = new TextEncoder().encode(str).map(b=>b^key);
+    bytes = bytes.map(b=>(b+17)&0xFF);
+    let b64 = btoa(String.fromCharCode(...bytes));
+    return {cipher:b64, key:key};
+}
+
+// =================== فك التشفير ===================
+function deepDecrypt(b64,key){
+    let arr = [];
+    for(let c of atob(b64)) arr.push(c.charCodeAt(0));
+    arr = arr.map(x=>((x-17)&0xFF) ^ key);
+    return String.fromCharCode(...arr);
+}
+
+// =================== تشويش وتوليد الكود ===================
+function obfuscate(){
+    let code = document.getElementById("input").value;
+    if(!code) return alert("ضع كود Lua أولاً!");
+
+    let enc = deepEncrypt(code);
+
+    let keyVar = randomName(12);
+    let cipherVar = randomName(18);
+    let loader = randomName(15);
+    let junkA = randomName(13);
+    let junkB = randomName(13);
+
+    let finalCode = `
+local ${keyVar}=${enc.key}
+local ${cipherVar}="${enc.cipher}"
+
+function ${junkA}() for i=1,10 do local x=i*3 end end
+function ${junkB}() return 1337 end
+
+local function ${loader}(b64,key)
+    local data={}
+    for c in b64:gmatch(".") do table.insert(data,string.byte(c)) end
+    for i=1,#data do data[i]=(data[i]-17)~key end
+    local str=string.char(table.unpack(data))
+    load(str)()
+end
+
+${loader}(${cipherVar},${keyVar})
+`;
+    document.getElementById("output").value = finalCode;
+}
+
+// =================== فك تشفير الكود المشفر ===================
+function deobfuscate(){
+    let encCode = document.getElementById("input").value;
+    if(!encCode) return alert("ضع الكود المشفر!");
+
+    let keyMatch = encCode.match(/local%s+[%w_]+%s*=%s*(%d+)/);
+    let cipherMatch = encCode.match(/local%s+[%w_]+%s*=%s*"([A-Za-z0-9+/=]+)"/);
+
+    if(!keyMatch || !cipherMatch)
+        return alert("تعذر التعرف على key أو Base64");
+
+    let key = parseInt(keyMatch[1]);
+    let cipher = cipherMatch[1];
+
+    let result = deepDecrypt(cipher, key);
+    document.getElementById("output").value = result;
+}
+
+// =================== تحميل الملف ===================
+function downloadFile(){
+    let text = document.getElementById("output").value;
+    if(!text) return alert("لا يوجد شيء للتحميل!");
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "lua_output.lua";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// =================== رفع ملف ===================
+document.getElementById("fileInput").addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=> document.getElementById("input").value = reader.result;
+    reader.readAsText(file, "UTF-8");
+});
+</script>
+
+</body>
+</html>
